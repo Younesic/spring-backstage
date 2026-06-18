@@ -1,0 +1,37 @@
+# Regenerates catalog-info.generated.yaml on every push to main and commits it if it changed,
+# so the central GitHub discovery (which reads committed files) always sees the current entity.
+#
+# If your default branch is protected against direct pushes, either allow this bot to bypass the
+# rule, or switch the commit step to open a pull request instead of pushing to main.
+name: Backstage catalog
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  generate-catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Generate catalog-info.generated.yaml
+        run: mvn -B -ntp -DskipTests process-classes
+      - name: Commit if changed
+        run: |
+          if ! git diff --quiet -- catalog-info.generated.yaml; then
+            git config user.name "backstage-bot"
+            git config user.email "backstage-bot@users.noreply.github.com"
+            git add catalog-info.generated.yaml
+            git commit -m "chore(backstage): refresh catalog-info.generated.yaml"
+            git push
+          else
+            echo "catalog-info.generated.yaml already up to date"
+          fi

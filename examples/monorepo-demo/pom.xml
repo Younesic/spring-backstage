@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.younesic.backstage</groupId>
+    <artifactId>spring-backstage-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>monorepo-demo</artifactId>
+  <packaging>pom</packaging>
+  <name>Backstage Catalog :: Example :: monorepo-demo</name>
+  <description>
+    Multi-module reactor proving per-module generation: a pom parent (skipped), two annotated services
+    (one with springdoc → API), one annotated shared library (type=library), and one non-annotated
+    library (ignored). The plugin is bound once here and inherited by every jar module.
+  </description>
+
+  <modules>
+    <module>libs/shared-model</module>
+    <module>libs/internal-util</module>
+    <module>services/orders-api</module>
+    <module>services/billing-api</module>
+  </modules>
+
+  <properties>
+    <springdoc.version>2.6.0</springdoc.version>
+    <!-- Example reactor, not a published artifact (inherited by all child modules) -->
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>io.github.younesic.backstage</groupId>
+        <artifactId>spring-backstage-maven-plugin</artifactId>
+        <version>${project.version}</version>
+        <configuration>
+          <annotationPrefix>spring-backstage.io</annotationPrefix>
+        </configuration>
+        <executions>
+          <execution>
+            <id>generate-catalog-info</id>
+            <goals>
+              <goal>generate-catalog-info</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

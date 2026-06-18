@@ -1,0 +1,71 @@
+<!--
+  Zero-touch distribution snippet — paste into your EXISTING corporate parent POM.
+
+  Goal: every service that already extends the corporate parent inherits the Backstage catalog
+  generator with NO per-project action. Maven allows only one <parent>, so we do not ship our own
+  parent POM; we slot into the one teams already use.
+
+  How it works:
+    * <pluginManagement> pins the plugin version org-wide (children don't repeat the version).
+    * <build><plugins> binds one execution to the standard `verify` phase, so it runs on
+      `mvn verify` / `install` / `deploy` in normal CI — no dedicated pipeline step, no `-D` flags.
+    * <configuration> carries the org defaults (annotation prefix, Harbor project, tooling registry
+      overrides). Tooling-integration annotations are otherwise derived automatically from the CI
+      environment and conventions; everything here is optional.
+    * pom modules and unannotated modules are skipped automatically; a missing optional tooling
+      annotation never fails the build (only `owner`/`lifecycle` are required).
+
+  Note on phase: `verify` is used per the platform decision. If your teams commonly stop at
+  `mvn package`, bind to `package` instead (change <phase> below) — the generation logic is identical.
+-->
+<project>
+  <build>
+
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>io.github.younesic.backstage</groupId>
+          <artifactId>spring-backstage-maven-plugin</artifactId>
+          <version>0.1.0-SNAPSHOT</version> <!-- pin the org-approved version here -->
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <plugin>
+        <groupId>io.github.younesic.backstage</groupId>
+        <artifactId>spring-backstage-maven-plugin</artifactId>
+        <!-- version comes from <pluginManagement> above; children inherit this whole block -->
+        <configuration>
+          <annotationPrefix>spring-backstage.io</annotationPrefix>
+          <!-- {harborProject} for goharbor.io/repository-slug; defaults to the last groupId segment -->
+          <harborProject>acme</harborProject>
+          <!--
+            Optional: extend/override the built-in tooling registry (merged by key). Omit entirely to
+            use the defaults (sonarqube.org/project-key, argocd/app-name, goharbor.io/repository-slug,
+            dependencytrack/project-name, dependencytrack/project-version, dependencytrack/project-id).
+          -->
+          <toolingAnnotations>
+            <toolingAnnotation>
+              <key>sonarqube.org/project-key</key>
+              <env>
+                <env>SONAR_PROJECT_KEY</env>
+              </env>
+              <convention>{groupId}_{artifactId}</convention>
+            </toolingAnnotation>
+          </toolingAnnotations>
+        </configuration>
+        <executions>
+          <execution>
+            <id>backstage-generate-catalog-info</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>generate-catalog-info</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+
+  </build>
+</project>

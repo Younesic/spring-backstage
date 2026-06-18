@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.younesic.backstage</groupId>
+    <artifactId>spring-backstage-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>monorepo-collision</artifactId>
+  <packaging>pom</packaging>
+  <name>Backstage Catalog :: Example :: monorepo-collision</name>
+  <description>
+    Standalone fixture (NOT part of the main reactor) where two modules both produce the name "dup".
+    Used to prove the aggregate/check goals fail fast on a name collision:
+      mvn -f examples/monorepo-collision/pom.xml -DskipTests process-classes \
+          io.github.younesic.backstage:spring-backstage-maven-plugin:0.1.0-SNAPSHOT:check-catalog-names
+  </description>
+
+  <modules>
+    <module>mod-a</module>
+    <module>mod-b</module>
+  </modules>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>io.github.younesic.backstage</groupId>
+        <artifactId>spring-backstage-maven-plugin</artifactId>
+        <version>${project.version}</version>
+        <executions>
+          <execution>
+            <id>generate-catalog-info</id>
+            <goals>
+              <goal>generate-catalog-info</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

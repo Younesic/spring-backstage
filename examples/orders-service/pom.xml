@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.younesic.backstage</groupId>
+    <artifactId>spring-backstage-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>orders-service</artifactId>
+  <name>Backstage Catalog :: Example :: orders-service</name>
+  <description>Sample Spring Boot service demonstrating @BackstageComponent + springdoc synergy.</description>
+
+  <properties>
+    <spring-boot.version>3.3.5</spring-boot.version>
+    <springdoc.version>2.6.0</springdoc.version>
+    <springdoc-maven-plugin.version>1.4</springdoc-maven-plugin.version>
+    <!-- Example, not a published artifact -->
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Makes @BackstageComponent available to the application code -->
+    <dependency>
+      <groupId>io.github.younesic.backstage</groupId>
+      <artifactId>spring-backstage-annotations</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- springdoc presence triggers the generated API entity -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>${springdoc.version}</version>
+    </dependency>
+
+    <!-- Test: reuse the core model/serializer (brings jackson-dataformat-yaml) -->
+    <dependency>
+      <groupId>io.github.younesic.backstage</groupId>
+      <artifactId>spring-backstage-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Generate catalog-info.generated.yaml at process-classes -->
+      <plugin>
+        <groupId>io.github.younesic.backstage</groupId>
+        <artifactId>spring-backstage-maven-plugin</artifactId>
+        <version>${project.version}</version>
+        <configuration>
+          <annotationPrefix>spring-backstage.io</annotationPrefix>
+          <apiDefinitionRef>./openapi.yaml</apiDefinitionRef>
+        </configuration>
+        <executions>
+          <execution>
+            <id>generate-catalog-info</id>
+            <goals>
+              <goal>generate-catalog-info</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!--
+      Optional: boot the app and export the live OpenAPI spec to ./openapi.yaml so the API entity's
+      $text: ./openapi.yaml reference resolves. springdoc has no static export; its Maven plugin
+      starts the app and GETs /v3/api-docs.yaml. Run: mvn -Popenapi-export verify
+    -->
+    <profile>
+      <id>openapi-export</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <version>${spring-boot.version}</version>
+            <configuration>
+              <jvmArguments>-Dspring.application.admin.enabled=true</jvmArguments>
+              <!-- Default JMX control port 9001 is often taken (e.g. Docker); use a free one. -->
+              <jmxPort>19876</jmxPort>
+            </configuration>
+            <executions>
+              <execution>
+                <id>start-app</id>
+                <goals><goal>start</goal></goals>
+                <phase>pre-integration-test</phase>
+              </execution>
+              <execution>
+                <id>stop-app</id>
+                <goals><goal>stop</goal></goals>
+                <phase>post-integration-test</phase>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-maven-plugin</artifactId>
+            <version>${springdoc-maven-plugin.version}</version>
+            <configuration>
+              <apiDocsUrl>http://localhost:18080/v3/api-docs.yaml</apiDocsUrl>
+              <outputFileName>openapi.yaml</outputFileName>
+              <outputDir>${project.basedir}</outputDir>
+            </configuration>
+            <executions>
+              <execution>
+                <id>export-openapi</id>
+                <phase>integration-test</phase>
+                <goals><goal>generate</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>

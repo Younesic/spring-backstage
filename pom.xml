@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.github.younesic.backstage</groupId>
+  <artifactId>spring-backstage-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>Backstage Component Generator (parent)</name>
+  <description>
+    Build-time generator of Backstage catalog entities (Component, API) from Spring Boot annotations,
+    in the spirit of springdoc-openapi. Emits a tool-owned catalog-info.generated.yaml.
+  </description>
+
+  <modules>
+    <module>spring-backstage-annotations</module>
+    <module>spring-backstage-core</module>
+    <module>spring-backstage-maven-plugin</module>
+    <module>examples/orders-service</module>
+    <module>examples/monorepo-demo</module>
+  </modules>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- GitHub Packages target (OWNER/REPO). Override with -Dgithub.packages.repo=... -->
+    <github.packages.repo>Younesic/spring-backstage</github.packages.repo>
+
+    <!-- Library deps -->
+    <jackson.version>2.17.2</jackson.version>
+    <classgraph.version>4.8.179</classgraph.version>
+
+    <!-- Maven plugin tooling -->
+    <maven.version>3.9.9</maven.version>
+    <maven-plugin-annotations.version>3.13.1</maven-plugin-annotations.version>
+    <maven-plugin-plugin.version>3.13.1</maven-plugin-plugin.version>
+
+    <!-- Test -->
+    <junit.version>5.10.2</junit.version>
+
+    <!-- Build plugins -->
+    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Internal modules -->
+      <dependency>
+        <groupId>io.github.younesic.backstage</groupId>
+        <artifactId>spring-backstage-annotations</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.younesic.backstage</groupId>
+        <artifactId>spring-backstage-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- Jackson BOM -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>io.github.classgraph</groupId>
+        <artifactId>classgraph</artifactId>
+        <version>${classgraph.version}</version>
+      </dependency>
+
+      <!-- JUnit BOM -->
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <!--
+    Publish to GitHub Packages (Maven) under the Younesic/spring-backstage repo. Override via
+    -Dgithub.packages.repo=OWNER/REPO. The publish workflow (.github/workflows/publish.yml) deploys
+    on push to main using the repo's own GITHUB_TOKEN (packages: write) — no PAT needed. Example
+    modules set maven.deploy.skip=true, so only the parent + the 3 library modules publish.
+  -->
+  <distributionManagement>
+    <repository>
+      <id>github-packages</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/${github.packages.repo}</url>
+    </repository>
+    <snapshotRepository>
+      <id>github-packages</id>
+      <url>https://maven.pkg.github.com/${github.packages.repo}</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-plugin-plugin</artifactId>
+          <version>${maven-plugin-plugin.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

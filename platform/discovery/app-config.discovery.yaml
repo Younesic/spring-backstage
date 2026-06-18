@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Option B — central GitHub discovery (owned by the platform team).
+#
+# Target model: EACH TEAM owns its own Git repo containing its catalog-info. The
+# central discovery scans the org and ingests every team repo's descriptor. The
+# Kratix team's `kratix-statestore` repo is just ONE publisher among many (its
+# slice = the infra Resources/Components it provisions); application teams publish
+# their Component/API via the @BackstageComponent generator in their own repos.
+#
+# Use the modern GithubEntityProvider (catalog.providers.github.<id>), NOT the
+# legacy github-discovery processor (it does not expand catalogPath wildcards).
+# ─────────────────────────────────────────────────────────────────────────────
+
+catalog:
+  # Experimental flag required for wildcard catalogPath resolution via the URL reader.
+  useUrlReadersSearch: true
+
+  providers:
+    github:
+      # ── Application services (the @BackstageComponent generator publishes here) ──
+      # Mode 1 (DEFAULT): each team repo has catalog-info.generated.yaml at its root.
+      # The single '*' in catalog-info*.yaml matches within ONE filename segment, so it
+      # picks up catalog-info.yaml AND catalog-info.generated.yaml; '/**/' matches any depth.
+      applicationServices:
+        organization: 'Younesic'                # the GitHub org (display org = AWB)
+        catalogPath: '/**/catalog-info*.yaml'   # catalog-info.yaml + catalog-info.generated.yaml
+        filters:
+          branch: 'main'
+          # Scope to the application-service repos. A wildcard path makes the URL reader read
+          # each matched repo's FULL git tree every cycle, so bound the blast radius: prefer a
+          # naming convention (e.g. 'svc-.*') or a topic over a bare '.*', and roll out on a
+          # subset before going org-wide.
+          repository: '.*'
+        # DO NOT set validateLocationsExist: true — incompatible with wildcards.
+        schedule:
+          frequency: { minutes: 15 }
+          timeout: { minutes: 3 }
+
+      # ── Kratix team: one publisher among many (already present in the PoC as v2 providers) ──
+      # Kept here only to show coexistence; these scan the kratix-statestore repo for the
+      # entities the Kratix promises publish. They live alongside applicationServices above.
+      kratixStateStoreCatalog:
+        organization: 'Younesic'
+        catalogPath: '/state/**/backstage/**/catalog-info.yaml'
+        filters:
+          branch: 'main'
+          repository: 'kratix-statestore'
+        schedule:
+          frequency: { minutes: 5 }
+          timeout: { minutes: 3 }
+
+# ── Mode 2 (zero central change for application teams) ──
+# If the org-wide glob is already '/**/catalog-info.yaml' (exact name, no '*' on the filename),
+# don't widen it. Instead each application team sets the plugin's outputPath to a file literally
+# named catalog-info.yaml in a sub-folder, e.g.:
+#     <configuration><outputPath>catalog/catalog-info.yaml</outputPath></configuration>
+# The existing recursive glob then ingests it with no central change.
+
+# ── Backend registration (already wired in this PoC) ──
+# packages/backend/src/index.ts:
+#     backend.add(import('@backstage/plugin-catalog-backend'));
+#     backend.add(import('@backstage/plugin-catalog-backend-module-github'));
+# A GitHub integration token is required to read the org:
+#   integrations:
+#     github:
+#       - host: github.com
+#         token: ${GITHUB_TOKEN}
+
+# ── Ownership of entity names across publishers ──
+# orphanStrategy: delete + multiple providers make name discipline non-negotiable:
+#   - Kratix team owns the names of its provisioned Resources/Components (state store).
+#   - Each application team owns its Component/API names (generated in its own repo).
+# Distinct sources MUST NOT declare the same kind+namespace+name, or the catalog raises
+# "conflicting entityRef" and orphans one. The generator only ever emits Component/API and
+# marks them with the sentinel annotation, so application names stay disjoint from infra names.

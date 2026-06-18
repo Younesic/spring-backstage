@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: orders-service
+
+server:
+  # High port to avoid the ubiquitous 8080 clash (Docker/nginx often hold it).
+  port: 18080
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs

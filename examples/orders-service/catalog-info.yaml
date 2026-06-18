@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# HUMAN-MAINTAINED catalog file. The generator NEVER edits this file and NEVER
+# emits a Location.
+#
+# Option B (central discovery): the platform team's GitHub discovery glob
+# (e.g. /**/catalog-info*.yaml) ingests BOTH this file and the tool-owned
+# catalog-info.generated.yaml sitting next to it — no Location, no per-repo
+# registration.
+#
+# In a real org these governance entities (Group/User/System) typically live in
+# central catalogs / org location / IdP, not in the service repo. They are kept
+# here only to make the example self-contained (so the generated Component's
+# owner/system references resolve).
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: team-payments
+  description: Payments squad.
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: jdoe
+spec:
+  memberOf:
+    - team-payments
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: checkout
+  description: Checkout domain.
+spec:
+  owner: group:default/team-payments
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: orders-db
+  description: Primary datastore for orders.
+spec:
+  type: database
+  owner: group:default/team-payments
+  system: checkout

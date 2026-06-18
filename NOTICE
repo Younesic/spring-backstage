@@ -1,0 +1,15 @@
+Backstage Component Generator
+Copyright 2026
+
+This product includes patterns and approaches studied from the following
+Apache License 2.0 project:
+
+  quarkiverse/quarkus-backstage
+  https://github.com/quarkiverse/quarkus-backstage
+  Licensed under the Apache License, Version 2.0.
+
+Specifically, the multi-document YAML serialization recipe (per-entity
+serialization with WRITE_DOC_START_MARKER, MINIMIZE_QUOTES enabled and
+SPLIT_LINES disabled) and the GitHub remote-URL parsing approach were derived
+from that project's Serialization and Git/Github utilities. No source files were
+copied verbatim; the implementations here are independent re-implementations.

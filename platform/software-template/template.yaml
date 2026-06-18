@@ -1,0 +1,110 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: springboot-backstage-service
+  title: Spring Boot Service (Backstage golden path)
+  description: >
+    Scaffold a new Spring Boot service already wired with the @BackstageComponent generator.
+    The service is auto-discovered by the central GitHub discovery — no Location, no manual
+    registration. The Component/API descriptor is generated at build time and committed by CI.
+  tags:
+    - java
+    - spring-boot
+    - recommended
+spec:
+  owner: group:default/team-platform
+  type: service
+
+  parameters:
+    - title: Service details
+      required:
+        - name
+        - owner
+        - lifecycle
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Unique service name (used for the repo, Maven artifactId and metadata.name).
+          pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$'
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+          description: What does this service do?
+        owner:
+          title: Owner
+          type: string
+          description: Owning team (Group). Required governance field.
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        system:
+          title: System
+          type: string
+          description: System this service belongs to (optional).
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: System
+        lifecycle:
+          title: Lifecycle
+          type: string
+          default: experimental
+          enum:
+            - experimental
+            - production
+            - deprecated
+
+    - title: Repository location
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+            # allowedOwners: [ my-org ]   # uncomment to constrain to your org
+
+  steps:
+    - id: fetch
+      name: Render the Spring Boot skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          system: ${{ parameters.system }}
+          lifecycle: ${{ parameters.lifecycle }}
+
+    - id: publish
+      name: Publish to GitHub
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+        repoVisibility: internal
+        deleteBranchOnMerge: true
+        protectDefaultBranch: true
+
+  # Discovery-first: NO catalog:register step. The central GitHub discovery provider
+  # (catalog.providers.github, catalogPath /**/catalog-info*.yaml) picks up the new repo on
+  # its next scan once CI has committed catalog-info.generated.yaml. Adding catalog:register
+  # here would create a redundant url-type Location for the same entity.
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
+    text:
+      - title: Next steps
+        content: |
+          Your service was created. The first CI run generates and commits
+          `catalog-info.generated.yaml`; it then appears in the catalog on the next
+          discovery scan — no manual registration needed.
