@@ -72,6 +72,23 @@ class ToolingResolverTest {
     }
 
     @Test
+    void envBeatsConventionForEveryStandardKey() {
+        // When the pipeline exports the real values, they win over the theoretical conventions.
+        CiEnvironment ci = CiEnvironment.detect(Map.of(
+                "SONAR_PROJECT_KEY", "real-sonar",
+                "ARGOCD_APP_NAME", "orders-prod",
+                "HARBOR_REPOSITORY", "shop/orders-image",
+                "DTRACK_PROJECT_NAME", "orders-svc",
+                "DTRACK_PROJECT_VERSION", "2.3.4"));
+        Map<String, String> out = ToolingResolver.resolve(null, Map.of(), ci, vars(), warn);
+        assertEquals("real-sonar", out.get("sonarqube.org/project-key"));
+        assertEquals("orders-prod", out.get("argocd/app-name"));
+        assertEquals("shop/orders-image", out.get("goharbor.io/repository-slug"));
+        assertEquals("orders-svc", out.get("dependencytrack/project-name"));
+        assertEquals("2.3.4", out.get("dependencytrack/project-version"));
+    }
+
+    @Test
     void optInDtrackIdEmittedOnlyWithEnv() {
         CiEnvironment ci = CiEnvironment.detect(Map.of("DTRACK_PROJECT_ID", "abc-123-uuid"));
         Map<String, String> out = ToolingResolver.resolve(null, Map.of(), ci, vars(), warn);

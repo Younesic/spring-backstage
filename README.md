@@ -171,19 +171,23 @@ omitted**. A missing tooling annotation **never fails the build** (only `owner`/
 
 ### Built-in registry (defaults)
 
-| Annotation key | Env source | Convention |
+Every key is **env-first**: the convention is only a fallback when the pipeline doesn't export the
+real value. The env var is what the job that actually creates the resource should export (the true
+Sonar key, ArgoCD app, Harbor slug…); the convention is a best-effort guess.
+
+| Annotation key | Env source (real CI value) | Convention (fallback guess) |
 |---|---|---|
 | `sonarqube.org/project-key` | `SONAR_PROJECT_KEY` | `{groupId}_{artifactId}` |
-| `argocd/app-name` | — | `{artifactId}` |
-| `goharbor.io/repository-slug` | — *(convention only — see note)* | `{harborProject}/{artifactId}` |
-| `dependencytrack/project-name` | — | `{artifactId}` |
-| `dependencytrack/project-version` | — | `{version}` |
+| `argocd/app-name` | `ARGOCD_APP_NAME` | `{artifactId}` |
+| `goharbor.io/repository-slug` | `HARBOR_REPOSITORY` | `{harborProject}/{artifactId}` |
+| `dependencytrack/project-name` | `DTRACK_PROJECT_NAME` | `{artifactId}` |
+| `dependencytrack/project-version` | `DTRACK_PROJECT_VERSION` | `{version}` |
 | `dependencytrack/project-id` | `DTRACK_PROJECT_ID` | — *(opt-in: omitted unless the env is set)* |
 
-> **Harbor note.** The Harbor plugin expects a bare `project/repository` slug **without** the registry
-> host. GitLab's `CI_REGISTRY_IMAGE` carries the host (`registry.gitlab.com/group/proj`), which the
-> plugin can't resolve, so it is deliberately **not** used as a source — the `{harborProject}/{artifactId}`
-> convention is authoritative. Set `harborProject` (or override the rule) to match your Harbor project.
+> **Harbor note.** `HARBOR_REPOSITORY` must be a bare `project/repository` slug **without** the registry
+> host. Do **not** point it at GitLab's `CI_REGISTRY_IMAGE` (`registry.gitlab.com/group/proj`) — the host
+> prefix is something the Harbor plugin can't resolve. If no env is set, the `{harborProject}/{artifactId}`
+> convention applies; set `harborProject` to match your Harbor project.
 
 Keys are the **bare** keys those plugins read (not under `annotationPrefix`). Tooling annotations are
 **component-scoped** — emitted on the Component only, never on the derived API/Resource. Values stay

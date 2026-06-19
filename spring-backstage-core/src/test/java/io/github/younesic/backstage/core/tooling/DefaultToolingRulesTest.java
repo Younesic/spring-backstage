@@ -39,6 +39,15 @@ class DefaultToolingRulesTest {
     }
 
     @Test
+    void everyConventionKeyIsAlsoEnvFirst() {
+        // Each key with a convention also exposes an env source, so a pipeline can override the guess.
+        assertTrue(DefaultToolingRules.all().stream()
+                        .filter(r -> r.convention != null && !r.convention.isEmpty())
+                        .allMatch(r -> !r.envNames().isEmpty()),
+                "every convention-backed key must be env-first");
+    }
+
+    @Test
     void allReturnsAFreshListEachCall() {
         assertNotSame(DefaultToolingRules.all(), DefaultToolingRules.all());
     }

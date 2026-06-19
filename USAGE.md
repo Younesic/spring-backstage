@@ -173,12 +173,14 @@ mvn spring-backstage:generate-catalog-info-aggregate -Dbackstage.inferDependenci
 needed. Precedence per key: explicit `annotations` override → CI env var → org convention; an
 unresolved key is simply omitted (never a build error). Defaults:
 
-| Key | Env | Convention |
+Env-first: the real CI value wins; the convention is only a fallback guess.
+
+| Key | Env (real CI value) | Convention (fallback) |
 |---|---|---|
 | `sonarqube.org/project-key` | `SONAR_PROJECT_KEY` | `{groupId}_{artifactId}` |
-| `argocd/app-name` | — | `{artifactId}` |
-| `goharbor.io/repository-slug` | — | `{harborProject}/{artifactId}` (host-free slug; `CI_REGISTRY_IMAGE` not used) |
-| `dependencytrack/project-name` / `…/project-version` | — | `{artifactId}` / `{version}` |
+| `argocd/app-name` | `ARGOCD_APP_NAME` | `{artifactId}` |
+| `goharbor.io/repository-slug` | `HARBOR_REPOSITORY` (host-free slug) | `{harborProject}/{artifactId}` |
+| `dependencytrack/project-name` / `…/project-version` | `DTRACK_PROJECT_NAME` / `DTRACK_PROJECT_VERSION` | `{artifactId}` / `{version}` |
 | `dependencytrack/project-id` | `DTRACK_PROJECT_ID` | — (opt-in) |
 
 CI system auto-detected (GitHub Actions / GitLab CI / Jenkins). **No CODEOWNERS** is read.

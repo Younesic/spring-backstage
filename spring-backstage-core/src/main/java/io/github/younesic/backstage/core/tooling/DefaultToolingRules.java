@@ -24,17 +24,26 @@ public final class DefaultToolingRules {
     private DefaultToolingRules() {
     }
 
-    /** A fresh, ordered copy of the built-in rules (registry order = emission order). */
+    /**
+     * A fresh, ordered copy of the built-in rules (registry order = emission order).
+     *
+     * <p>Every key is <strong>env-first</strong>: the convention is only a fallback for when the
+     * pipeline does not export the real value. The default env names below are the values the job that
+     * actually creates each resource should export (the true Sonar key, ArgoCD app, Harbor slug, …);
+     * the convention is a best-effort guess that is correct only if the org follows that pattern. Map
+     * your own CI variable names via the plugin {@code <toolingAnnotations>} config if they differ.
+     *
+     * <p>Note for Harbor: {@code HARBOR_REPOSITORY} must be a bare {@code project/repository} slug — do
+     * NOT point it at GitLab's {@code CI_REGISTRY_IMAGE}, which carries the registry host the Harbor
+     * plugin cannot resolve.
+     */
     public static List<ToolingRule> all() {
         return List.of(
                 new ToolingRule("sonarqube.org/project-key", List.of("SONAR_PROJECT_KEY"), "{groupId}_{artifactId}"),
-                new ToolingRule("argocd/app-name", List.of(), "{artifactId}"),
-                // No env source: the Harbor plugin expects a bare "project/repository" slug (no registry
-                // host). GitLab's CI_REGISTRY_IMAGE carries the registry host (e.g. registry.gitlab.com/
-                // group/proj), which the plugin cannot resolve — so the convention is authoritative.
-                new ToolingRule("goharbor.io/repository-slug", List.of(), "{harborProject}/{artifactId}"),
-                new ToolingRule("dependencytrack/project-name", List.of(), "{artifactId}"),
-                new ToolingRule("dependencytrack/project-version", List.of(), "{version}"),
+                new ToolingRule("argocd/app-name", List.of("ARGOCD_APP_NAME"), "{artifactId}"),
+                new ToolingRule("goharbor.io/repository-slug", List.of("HARBOR_REPOSITORY"), "{harborProject}/{artifactId}"),
+                new ToolingRule("dependencytrack/project-name", List.of("DTRACK_PROJECT_NAME"), "{artifactId}"),
+                new ToolingRule("dependencytrack/project-version", List.of("DTRACK_PROJECT_VERSION"), "{version}"),
                 new ToolingRule("dependencytrack/project-id", List.of("DTRACK_PROJECT_ID"), null));
     }
 }
