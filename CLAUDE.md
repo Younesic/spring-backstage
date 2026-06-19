@@ -63,6 +63,18 @@ Build-time generator of Backstage `Component`/`API` entities from a Spring Boot 
 - **Distribution zéro-touch** = snippet docs `platform/parent-pom/pluginManagement-snippet.xml`
   (`<pluginManagement>` + exécution liée à `verify`) à coller dans le parent corporate existant — pas de
   parent gouvernance livré (un seul `<parent>` Maven possible).
+- **Multi-SCM (GitHub/GitLab/self-hosted)** : `GitMetadata.REMOTE` parse n'importe quel host (plus de regex
+  github-only) → `RepoInfo.provider` (`github`/`gitlab`/null via `providerForHost`, heuristique sur le nom
+  d'host). La clé de slug est dynamique : `GenerationRequest.projectSlugKey` (défaut `github.com/project-slug`),
+  posée par `CatalogGeneration.slugKey()` = provider du remote → système CI (`GITLAB_CI`/`GITHUB_ACTIONS`) →
+  param `scmProvider` → défaut `github`. GitLab garde les nested groups (`group/sub/projet`).
+- **Adoption org** : héberger l'artefact sur le registre Maven interne (GitHub Packages, **GitLab Package
+  Registry**, Nexus, Artifactory), pas de clone-and-build par service. CI publish : GitHub
+  `.github/workflows/publish.yml` (`GITHUB_TOKEN`) ; GitLab `platform/gitlab/.gitlab-ci.publish.yml`
+  (`CI_JOB_TOKEN`). Auth Maven GitLab = header `Job-Token` (`platform/gitlab/settings.xml`).
+- **Publication GitHub Packages** : `distributionManagement` → `${github.packages.repo}` (défaut
+  `Younesic/spring-backstage`) ; le repo `spring-backstage` est **public** → lisible par le `github.token`
+  des repos consommateurs (sinon package privé = 404 cross-repo). Examples : `maven.deploy.skip=true`.
 
 ## Option B — intégration par discovery centrale (verrouillée)
 

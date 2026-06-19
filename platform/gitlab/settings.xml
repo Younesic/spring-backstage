@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven auth for the GitLab Package Registry, used in GitLab CI for BOTH publishing the generator and
+  consuming it from a service build. GitLab authenticates Maven via a CI_JOB_TOKEN HTTP header (no
+  username/password). The server <id> must match the repository id in your pom / -DaltDeploymentRepository.
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+  <servers>
+    <server>
+      <id>gitlab-maven</id>
+      <configuration>
+        <httpHeaders>
+          <property>
+            <name>Job-Token</name>
+            <value>${CI_JOB_TOKEN}</value>
+          </property>
+        </httpHeaders>
+      </configuration>
+    </server>
+  </servers>
+</settings>

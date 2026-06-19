@@ -139,7 +139,7 @@ public final class CatalogBuilder {
      */
     private Map<String, String> annotations(GenerationRequest req, boolean includeTechDocs, boolean includeTooling) {
         Map<String, String> a = new LinkedHashMap<>();
-        putIfPresent(a, "github.com/project-slug", req.projectSlug);
+        putIfPresent(a, req.projectSlugKey, req.projectSlug);
         putIfPresent(a, "backstage.io/source-location", req.sourceLocation);
         if (includeTechDocs) {
             putIfPresent(a, "backstage.io/techdocs-ref", req.techDocsRef);

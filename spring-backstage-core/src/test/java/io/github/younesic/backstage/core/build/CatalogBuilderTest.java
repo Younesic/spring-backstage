@@ -97,6 +97,16 @@ class CatalogBuilderTest {
     }
 
     @Test
+    void usesTheGivenSlugKeyForGitlab() {
+        ComponentEntity c = (ComponentEntity) builder.build(base()
+                .projectSlug("group/sub/orders")
+                .projectSlugKey("gitlab.com/project-slug")
+                .build()).get(0);
+        assertEquals("group/sub/orders", c.metadata.annotations.get("gitlab.com/project-slug"));
+        assertNull(c.metadata.annotations.get("github.com/project-slug"));
+    }
+
+    @Test
     void emitsToolingAnnotationsOnComponentOnlyNotApi() {
         Map<String, String> tooling = new LinkedHashMap<>();
         tooling.put("sonarqube.org/project-key", "acme_orders");

@@ -28,6 +28,8 @@ public final class GenerationRequest {
     public final boolean springdocPresent;
     public final String apiDefinitionRef;
     public final String projectSlug;
+    /** Annotation key for the slug, e.g. {@code github.com/project-slug} or {@code gitlab.com/project-slug}. */
+    public final String projectSlugKey;
     public final String sourceLocation;
     public final String techDocsRef;
     public final String buildVersion;
@@ -52,6 +54,8 @@ public final class GenerationRequest {
         this.springdocPresent = b.springdocPresent;
         this.apiDefinitionRef = b.apiDefinitionRef;
         this.projectSlug = b.projectSlug;
+        this.projectSlugKey = (b.projectSlugKey == null || b.projectSlugKey.isBlank())
+                ? "github.com/project-slug" : b.projectSlugKey;
         this.sourceLocation = b.sourceLocation;
         this.techDocsRef = b.techDocsRef;
         this.buildVersion = b.buildVersion;
@@ -87,6 +91,7 @@ public final class GenerationRequest {
         private boolean springdocPresent;
         private String apiDefinitionRef = "./openapi.yaml";
         private String projectSlug;
+        private String projectSlugKey = "github.com/project-slug";
         private String sourceLocation;
         private String techDocsRef;
         private String buildVersion;
@@ -109,6 +114,7 @@ public final class GenerationRequest {
         public Builder springdocPresent(boolean v) { this.springdocPresent = v; return this; }
         public Builder apiDefinitionRef(String v) { this.apiDefinitionRef = v; return this; }
         public Builder projectSlug(String v) { this.projectSlug = v; return this; }
+        public Builder projectSlugKey(String v) { this.projectSlugKey = v; return this; }
         public Builder sourceLocation(String v) { this.sourceLocation = v; return this; }
         public Builder techDocsRef(String v) { this.techDocsRef = v; return this; }
         public Builder buildVersion(String v) { this.buildVersion = v; return this; }

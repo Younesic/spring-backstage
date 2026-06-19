@@ -111,6 +111,7 @@ final class CatalogGeneration {
                 .springdocPresent(springdoc)
                 .apiDefinitionRef(cfg.apiDefinitionRef)
                 .projectSlug(repo != null ? repo.projectSlug : null)
+                .projectSlugKey(slugKey(repo, ci, cfg))
                 .sourceLocation(sourceLocation)
                 .techDocsRef(techDocsRef(basedir))
                 .buildVersion(module.getVersion())
@@ -146,6 +147,29 @@ final class CatalogGeneration {
         ToolingResolver.Warn warn = msg -> log.warn("Backstage: " + msg);
         Map<String, String> overrides = ToolingResolver.parseOverrides(declared.annotations, warn);
         return ToolingResolver.resolve(cfg.toolingRules, overrides, ci, vars, warn);
+    }
+
+    /**
+     * The {@code <provider>.com/project-slug} annotation key. Provider precedence: the git remote host
+     * (github/gitlab) → the detected CI system → the {@code scmProvider} config → default {@code github}.
+     */
+    private static String slugKey(RepoInfo repo, CiEnvironment ci, GenConfig cfg) {
+        String provider = (repo != null && notBlank(repo.provider)) ? repo.provider : providerFromCi(ci);
+        if (provider == null) {
+            provider = notBlank(cfg.scmProvider) ? cfg.scmProvider.trim().toLowerCase(Locale.ROOT) : "github";
+        }
+        return provider + ".com/project-slug";
+    }
+
+    private static String providerFromCi(CiEnvironment ci) {
+        switch (ci.system()) {
+            case GITLAB:
+                return "gitlab";
+            case GITHUB:
+                return "github";
+            default:
+                return null;
+        }
     }
 
     private static String lastSegment(String groupId) {

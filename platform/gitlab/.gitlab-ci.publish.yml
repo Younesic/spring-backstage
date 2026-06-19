@@ -1,0 +1,23 @@
+# Publish the generator (parent + annotations + core + maven-plugin) to THIS project's GitLab Package
+# Registry on every push to the default branch. Copy into the .gitlab-ci.yml of your internal fork of
+# the generator. Authentication is the built-in CI_JOB_TOKEN — no PAT needed. Example modules set
+# maven.deploy.skip=true, so only the library artifacts publish.
+#
+# Consumers then resolve io.github.younesic.backstage:* from:
+#   <CI_SERVER_URL>/api/v4/projects/<this-project-id>/packages/maven
+# (or a GROUP-level endpoint /groups/<id>/-/packages/maven so every repo in the group can read it).
+
+publish-generator:
+  image: maven:3.9-eclipse-temurin-17
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  cache:
+    paths: [ .m2/repository ]
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  script:
+    - >
+      mvn -B -ntp -DskipTests
+      -s platform/gitlab/settings.xml
+      -DaltDeploymentRepository=gitlab-maven::${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/maven
+      deploy

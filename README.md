@@ -142,9 +142,16 @@ Missing/blank/malformed `owner` or missing `lifecycle` **fails the build** with 
 `description`, `tags`, `dependsOn` (manual only), `emitApi`.
 
 **Derived automatically:** `metadata.name` (`spring.application.name` → `artifactId`, normalized to
-lowercase kebab ≤63; unresolved `@...@` placeholders ignored); `github.com/project-slug` and
-`backstage.io/source-location` (git `origin`); `backstage.io/techdocs-ref: dir:.` (if `mkdocs.yml`);
-`spring-backstage.io/build-version`. **No timestamp** is emitted (it would break idempotence).
+lowercase kebab ≤63; unresolved `@...@` placeholders ignored); the provider-aware project slug
+(`github.com/project-slug` **or** `gitlab.com/project-slug`) and `backstage.io/source-location` (git
+`origin`); `backstage.io/techdocs-ref: dir:.` (if `mkdocs.yml`); `spring-backstage.io/build-version`.
+**No timestamp** is emitted (it would break idempotence).
+
+**SCM-agnostic.** The slug key follows the remote host (GitHub, GitLab, or self-hosted variants) — e.g. a
+GitLab remote emits `gitlab.com/project-slug` with the full nested-group path. The provider is inferred
+from the host, then the CI system (`GITLAB_CI`/`GITHUB_ACTIONS`); force it with `scmProvider`
+(`-Dbackstage.scmProvider=gitlab`) for unusual host names. See
+[`platform/gitlab/`](./platform/gitlab/) for GitLab CI publish/consume.
 
 ## springdoc synergy → API entity
 
@@ -313,6 +320,7 @@ deferred and off by default. Declare `consumesApis` explicitly for now.
 | `inferConsumedApis` | `backstage.inferConsumedApis` | `false` (reserved — Feign inference, not yet implemented) |
 | `toolingAnnotations` | *(nested `<toolingAnnotation>` rules)* | built-in registry (Sonar/ArgoCD/Harbor/Dtrack); merged by key |
 | `harborProject` | `backstage.harborProject` | last segment of `groupId` |
+| `scmProvider` | `backstage.scmProvider` | auto (host → CI system → `github`) |
 | `skip` | `backstage.skip` | `false` |
 | `aggregateOutputPath` *(aggregate)* | `backstage.aggregateOutputPath` | `catalog-info.generated.yaml` (repo root) |
 | `failOnDuplicateName` *(aggregate/check)* | `backstage.failOnDuplicateName` | `true` |
@@ -362,6 +370,23 @@ it pins the version in `<pluginManagement>` and binds an execution to **`verify`
 tooling registry + conventions in `<configuration>`. Because Maven allows only **one** `<parent>`, we
 don't ship our own parent — we insert into the corporate one. Per-project `<plugin>` blocks (as in the
 examples) remain valid for repos without a shared parent.
+
+## Adopt in your organization (GitHub, GitLab, internal registry)
+
+The plugin is a normal Maven artifact — adopt it the way you adopt any internal library:
+
+1. **Host it internally.** Fork/clone this repo into your SCM and publish the 3 library modules **once**
+   to your internal Maven registry — GitHub Packages, **GitLab Package Registry**, Nexus, or Artifactory.
+   Don't clone-and-build it per service. CI to publish: GitHub → [`.github/workflows/publish.yml`](./.github/workflows/publish.yml)
+   (built-in `GITHUB_TOKEN`); GitLab → [`platform/gitlab/.gitlab-ci.publish.yml`](./platform/gitlab/.gitlab-ci.publish.yml)
+   (built-in `CI_JOB_TOKEN`).
+2. **Point services at that registry** (`<repositories>` + `<pluginRepositories>`), then add the
+   annotation + plugin — or inherit both from your corporate parent POM (above).
+3. **Regenerate in CI.** GitHub Actions or GitLab CI ([`platform/gitlab/.gitlab-ci.service.yml`](./platform/gitlab/.gitlab-ci.service.yml))
+   runs `process-classes` and commits the descriptor; your central discovery ingests it.
+
+The catalog derivation is **SCM-agnostic** (GitHub/GitLab/self-hosted) and **CI-agnostic** (GitHub
+Actions / GitLab CI / Jenkins). Full GitLab walk-through: [`platform/gitlab/README.md`](./platform/gitlab/README.md).
 
 ## Golden path (Software Template)
 

@@ -93,6 +93,10 @@ public class GenerateCatalogInfoMojo extends AbstractMojo {
     @Parameter(property = "backstage.harborProject")
     private String harborProject;
 
+    /** SCM provider ({@code github}/{@code gitlab}) for the project-slug key; blank = auto-detect. */
+    @Parameter(property = "backstage.scmProvider")
+    private String scmProvider;
+
     /** Maven {@code <scm>} URL, used as the last fallback for repo slug / source-location. */
     @Parameter(defaultValue = "${project.scm.url}", readonly = true)
     private String scmUrl;
@@ -111,7 +115,7 @@ public class GenerateCatalogInfoMojo extends AbstractMojo {
         Path basedir = project.getBasedir().toPath();
         RepoInfo repo = GitMetadata.discover(basedir, sourceLocationBranch, repoBaseUrl, scmUrl).orElse(null);
         GenConfig cfg = new GenConfig(annotationPrefix, apiDefinitionRef, emitApi, sourceLocationBranch,
-                inferConsumedApis, toolingAnnotations, harborProject);
+                inferConsumedApis, toolingAnnotations, harborProject, scmProvider);
 
         Optional<ModuleResult> result;
         try {

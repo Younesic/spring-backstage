@@ -62,6 +62,10 @@ abstract class AbstractAggregatorMojo extends AbstractMojo {
     @Parameter(property = "backstage.harborProject")
     protected String harborProject;
 
+    /** SCM provider ({@code github}/{@code gitlab}) for the project-slug key; blank = auto-detect. */
+    @Parameter(property = "backstage.scmProvider")
+    protected String scmProvider;
+
     /** Maven {@code <scm>} URL, used as the last fallback for repo slug / source-location. */
     @Parameter(defaultValue = "${project.scm.url}", readonly = true)
     protected String scmUrl;
@@ -74,7 +78,7 @@ abstract class AbstractAggregatorMojo extends AbstractMojo {
     /** Run every reactor module through the shared generation path; collect the catalogued ones. */
     protected List<ModuleResult> collect(RepoInfo repo) throws MojoFailureException {
         GenConfig cfg = new GenConfig(annotationPrefix, apiDefinitionRef, emitApi, sourceLocationBranch,
-                inferConsumedApis, toolingAnnotations, harborProject);
+                inferConsumedApis, toolingAnnotations, harborProject, scmProvider);
         List<ModuleResult> results = new ArrayList<>();
         for (MavenProject module : reactorProjects) {
             try {

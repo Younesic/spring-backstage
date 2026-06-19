@@ -31,8 +31,30 @@ class GitMetadataTest {
     }
 
     @Test
-    void ignoresNonGithubAndNull() {
-        assertTrue(GitMetadata.fromRemoteUrl("git@gitlab.com:org/repo.git").isEmpty());
+    void parsesGitlabIncludingNestedGroups() {
+        RepoInfo simple = GitMetadata.fromRemoteUrl("git@gitlab.com:group/project.git").orElseThrow();
+        assertEquals("group/project", simple.projectSlug);
+        assertEquals("https://gitlab.com/group/project", simple.baseUrl);
+        assertEquals("gitlab", simple.provider);
+
+        RepoInfo nested = GitMetadata.fromRemoteUrl("https://gitlab.com/group/sub/project.git").orElseThrow();
+        assertEquals("group/sub/project", nested.projectSlug, "GitLab nested groups keep all path segments");
+        assertEquals("gitlab", nested.provider);
+    }
+
+    @Test
+    void parsesSelfHostedHostsAndInfersProvider() {
+        assertEquals("gitlab", GitMetadata.fromRemoteUrl("git@gitlab.acme.io:team/svc.git").orElseThrow().provider);
+        assertEquals("github", GitMetadata.fromRemoteUrl("https://github.acme.io/team/svc").orElseThrow().provider);
+        // Unknown host still parses (slug + base URL) but leaves provider unresolved.
+        RepoInfo unknown = GitMetadata.fromRemoteUrl("git@scm.acme.io:team/svc.git").orElseThrow();
+        assertEquals("team/svc", unknown.projectSlug);
+        assertEquals("https://scm.acme.io/team/svc", unknown.baseUrl);
+        assertEquals(null, unknown.provider);
+    }
+
+    @Test
+    void ignoresNull() {
         assertTrue(GitMetadata.fromRemoteUrl(null).isEmpty());
     }
 
@@ -78,11 +100,11 @@ class GitMetadataTest {
 
     @Test
     void sourceLocationUsesBranchThenFallback() {
-        RepoInfo onBranch = new RepoInfo("acme/repo", "https://github.com/acme/repo", "develop", Path.of("/repo"));
+        RepoInfo onBranch = new RepoInfo("acme/repo", "https://github.com/acme/repo", "github", "develop", Path.of("/repo"));
         assertEquals("url:https://github.com/acme/repo/tree/develop/services/orders/",
                 GitMetadata.sourceLocation(onBranch, Path.of("/repo/services/orders"), "main"));
 
-        RepoInfo detached = new RepoInfo("acme/repo", "https://github.com/acme/repo", null, Path.of("/repo"));
+        RepoInfo detached = new RepoInfo("acme/repo", "https://github.com/acme/repo", "github", null, Path.of("/repo"));
         assertEquals("url:https://github.com/acme/repo/tree/main/services/orders/",
                 GitMetadata.sourceLocation(detached, Path.of("/repo/services/orders"), "main"));
     }

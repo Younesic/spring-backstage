@@ -25,9 +25,14 @@ import java.util.regex.Pattern;
  */
 public final class GitMetadata {
 
-    /** group(1) = org/owner, group(2) = repo (trailing {@code .git} stripped separately). */
-    static final Pattern GITHUB = Pattern.compile(
-            "(?:git@|https://|ssh://git@)github\\.com[:/]([^/]+)/(.+?)(?:\\.git)?/?$");
+    /**
+     * SCM-agnostic remote parser: group(1) = host, group(2) = path (the slug; GitLab nested groups give
+     * {@code group/subgroup/project}). Trailing {@code .git}/{@code /} are stripped separately. Matches
+     * {@code git@host:path}, {@code https://host/path}, {@code ssh://[git@]host/path} for ANY host, so
+     * GitHub, GitLab (.com or self-hosted), and others all resolve.
+     */
+    static final Pattern REMOTE = Pattern.compile(
+            "(?:git@|https?://|ssh://(?:git@)?)([^/:]+)[:/](.+?)(?:\\.git)?/?$");
 
     /** Default branch used when {@code HEAD} is detached/unknown and no override is given. */
     public static final String DEFAULT_BRANCH = "main";
@@ -37,40 +42,57 @@ public final class GitMetadata {
 
     /** Repository linkage derived for a working tree. */
     public static final class RepoInfo {
-        /** {@code <org>/<repo>} for {@code github.com/project-slug}. */
+        /** {@code <group>/.../<repo>} for the {@code <provider>.com/project-slug} annotation. */
         public final String projectSlug;
-        /** {@code https://github.com/<org>/<repo>} (no trailing slash). */
+        /** {@code https://<host>/<slug>} (no trailing slash). */
         public final String baseUrl;
+        /** SCM provider: {@code "github"}, {@code "gitlab"}, or {@code null} when not inferable from host. */
+        public final String provider;
         /** Resolved branch, or {@code null} when detached/unknown. */
         public final String branch;
         /** Directory containing {@code .git}, or {@code null} when not found. */
         public final Path workTreeRoot;
 
-        RepoInfo(String projectSlug, String baseUrl, String branch, Path workTreeRoot) {
+        RepoInfo(String projectSlug, String baseUrl, String provider, String branch, Path workTreeRoot) {
             this.projectSlug = projectSlug;
             this.baseUrl = baseUrl;
+            this.provider = provider;
             this.branch = branch;
             this.workTreeRoot = workTreeRoot;
         }
 
         RepoInfo withGit(String branch, Path workTreeRoot) {
-            return new RepoInfo(projectSlug, baseUrl, branch, workTreeRoot);
+            return new RepoInfo(projectSlug, baseUrl, provider, branch, workTreeRoot);
         }
     }
 
-    /** Parse a raw remote URL into slug + base URL; empty if not a recognized GitHub remote. */
+    /** Parse a raw remote URL into provider + slug + base URL; empty if it isn't a recognizable remote. */
     public static Optional<RepoInfo> fromRemoteUrl(String remoteUrl) {
         if (remoteUrl == null) {
             return Optional.empty();
         }
-        Matcher m = GITHUB.matcher(remoteUrl.trim());
+        Matcher m = REMOTE.matcher(remoteUrl.trim());
         if (!m.matches()) {
             return Optional.empty();
         }
-        String org = m.group(1);
-        String repo = m.group(2).replaceAll("\\.git$", "");
-        String slug = org + "/" + repo;
-        return Optional.of(new RepoInfo(slug, "https://github.com/" + slug, null, null));
+        String host = m.group(1);
+        String slug = m.group(2).replaceAll("\\.git$", "");
+        return Optional.of(new RepoInfo(slug, "https://" + host + "/" + slug, providerForHost(host), null, null));
+    }
+
+    /** Infer the SCM provider from the host: github.com / gitlab.com or a self-hosted variant. */
+    static String providerForHost(String host) {
+        if (host == null) {
+            return null;
+        }
+        String h = host.toLowerCase();
+        if (h.contains("github")) {
+            return "github";
+        }
+        if (h.contains("gitlab")) {
+            return "gitlab";
+        }
+        return null;
     }
 
     /** Best-effort discovery from the filesystem starting at {@code start}. */
@@ -114,7 +136,7 @@ public final class GitMetadata {
         if (notBlank(fallbackUrl)) {
             RepoInfo base = fromRemoteUrl(fallbackUrl)
                     .orElseGet(() -> new RepoInfo(slugFromBaseUrl(fallbackUrl), trimTrailingSlash(fallbackUrl),
-                            null, null));
+                            null, null, null));
             Path workTree = ctx.map(c -> c.workTreeRoot).orElse(null);
             String branch = notBlank(branchOverride) ? branchOverride.trim()
                     : ctx.map(c -> branch(c, null)).orElse(null);

@@ -1,0 +1,38 @@
+# Per-service GitLab CI: regenerate catalog-info.generated.yaml and commit it back on the default
+# branch, so your central catalog ingestion always sees the current entity. Copy into a service repo's
+# .gitlab-ci.yml. The plugin is resolved from the GitLab Package Registry (see .gitlab-ci.publish.yml).
+#
+# On GitLab CI the generator auto-detects GITLAB_CI -> emits gitlab.com/project-slug, takes the branch
+# from CI_COMMIT_REF_NAME, and prefers your real tooling values when the pipeline exports them
+# (SONAR_PROJECT_KEY / ARGOCD_APP_NAME / HARBOR_REPOSITORY / DTRACK_PROJECT_NAME ...).
+#
+# Prereqs in the service:
+#   * pom.xml has a <pluginRepository> (and <repository>) with id 'gitlab-maven' pointing at the
+#     group/project Maven endpoint that hosts the generator.
+#   * A project/group access token with write_repository scope, exposed as CI_PUSH_TOKEN (masked), so
+#     the job can push the refreshed descriptor (CI_JOB_TOKEN cannot push commits).
+
+generate-catalog:
+  image: maven:3.9-eclipse-temurin-17
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  cache:
+    paths: [ .m2/repository ]
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+    # Export your REAL tooling values here so annotations are CI-derived, not convention:
+    # ARGOCD_APP_NAME: "orders-prod"
+    # SONAR_PROJECT_KEY: "$CI_PROJECT_PATH_SLUG"
+    # HARBOR_REPOSITORY: "platform/$CI_PROJECT_NAME"
+  script:
+    - mvn -B -ntp -DskipTests -s platform/gitlab/settings.xml process-classes
+    - |
+      if ! git diff --quiet -- catalog-info.generated.yaml; then
+        git config user.name  "backstage-bot"
+        git config user.email "backstage-bot@${CI_SERVER_HOST}"
+        git add catalog-info.generated.yaml
+        git commit -m "chore(backstage): refresh catalog-info.generated.yaml"
+        git push "https://gitlab-ci-token:${CI_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" "HEAD:${CI_DEFAULT_BRANCH}"
+      else
+        echo "catalog-info.generated.yaml already up to date"
+      fi
