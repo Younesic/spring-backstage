@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven auth for an internal registry (Nexus / Artifactory), used by Jenkins for BOTH publishing the
+  generator and consuming it from a service build. The server <id> must match the repository id in your
+  pom (<repositories>/<pluginRepositories>/distributionManagement) or in -DaltDeploymentRepository.
+
+  Credentials come from environment variables that Jenkins injects (withCredentials), so nothing secret
+  is stored here. The recommended Jenkins setup is the Config File Provider plugin: store THIS file as a
+  managed "Global Maven settings.xml" (id e.g. `maven-settings`) and bind a username/password credential
+  to the NEXUS_USER / NEXUS_PASS variables on the job.
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+  <servers>
+    <server>
+      <id>internal</id>
+      <username>${env.NEXUS_USER}</username>
+      <password>${env.NEXUS_PASS}</password>
+    </server>
+  </servers>
+</settings>

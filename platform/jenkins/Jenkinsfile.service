@@ -1,0 +1,59 @@
+// Per-service Jenkins pipeline: regenerate catalog-info.generated.yaml and commit it back to GitLab on
+// the default branch, so your central catalog ingestion always sees the current entity. Put this in a
+// service repo as `Jenkinsfile`.
+//
+// Stack assumed: GitLab (git host) + Jenkins (CI) + internal Maven registry (Nexus/Artifactory).
+//   * The plugin is resolved from the internal registry (settings.xml server id 'internal' +
+//     <pluginRepository> in the service pom, or inherited from the corporate parent POM).
+//   * Provider is auto-detected from the GitLab remote host -> emits gitlab.com/project-slug.
+//   * The branch comes from Jenkins (BRANCH_NAME / GIT_BRANCH), so source-location is correct even on a
+//     detached-HEAD checkout.
+//   * Export your REAL tooling values in environment{} so annotations are CI-derived, not convention.
+pipeline {
+  agent {
+    docker { image 'maven:3.9-eclipse-temurin-17'; args '-v $HOME/.m2:/root/.m2' }
+  }
+  environment {
+    // Real values your pipelines actually use (override or remove as needed):
+    ARGOCD_APP_NAME    = 'orders-demo-prod'
+    SONAR_PROJECT_KEY  = 'younesic_orders-demo'
+    HARBOR_REPOSITORY  = 'platform/orders-demo'
+    // DTRACK_PROJECT_NAME / DTRACK_PROJECT_VERSION / DTRACK_PROJECT_ID as applicable
+  }
+  stages {
+    stage('Generate') {
+      steps {
+        configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
+          withCredentials([usernamePassword(credentialsId: 'nexus-read',
+                                            usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+            sh 'mvn -B -ntp -DskipTests -s "$MAVEN_SETTINGS" process-classes'
+          }
+        }
+      }
+    }
+    stage('Commit if changed') {
+      when { branch 'main' }
+      steps {
+        // 'gitlab-bot' = a GitLab project/group access token (write_repository) as a username/password
+        // credential. Pushing with a token avoids needing the CI checkout credentials to have write.
+        withCredentials([usernamePassword(credentialsId: 'gitlab-bot',
+                                          usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+          sh '''
+            if git diff --quiet -- catalog-info.generated.yaml; then
+              echo "catalog-info.generated.yaml already up to date"
+            else
+              git config user.name  "backstage-bot"
+              git config user.email "backstage-bot@${JENKINS_URL:-ci}"
+              git add catalog-info.generated.yaml
+              git commit -m "chore(backstage): refresh catalog-info.generated.yaml"
+              # Derive host/path from the existing origin, then push over HTTPS with the bot token.
+              ORIGIN=$(git config --get remote.origin.url)
+              HOSTPATH=$(echo "$ORIGIN" | sed -E 's#^(git@|https?://)([^/:]+)[:/](.+?)(\\.git)?$#\\2/\\3#')
+              git push "https://${GIT_USER}:${GIT_TOKEN}@${HOSTPATH}.git" "HEAD:${BRANCH_NAME:-main}"
+            fi
+          '''
+        }
+      }
+    }
+  }
+}

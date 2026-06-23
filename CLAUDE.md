@@ -68,10 +68,15 @@ Build-time generator of Backstage `Component`/`API` entities from a Spring Boot 
   d'host). La clé de slug est dynamique : `GenerationRequest.projectSlugKey` (défaut `github.com/project-slug`),
   posée par `CatalogGeneration.slugKey()` = provider du remote → système CI (`GITLAB_CI`/`GITHUB_ACTIONS`) →
   param `scmProvider` → défaut `github`. GitLab garde les nested groups (`group/sub/projet`).
-- **Adoption org** : héberger l'artefact sur le registre Maven interne (GitHub Packages, **GitLab Package
-  Registry**, Nexus, Artifactory), pas de clone-and-build par service. CI publish : GitHub
-  `.github/workflows/publish.yml` (`GITHUB_TOKEN`) ; GitLab `platform/gitlab/.gitlab-ci.publish.yml`
-  (`CI_JOB_TOKEN`). Auth Maven GitLab = header `Job-Token` (`platform/gitlab/settings.xml`).
+- **Adoption org** : héberger l'artefact sur le registre Maven interne (Nexus/Artifactory, GitLab Package
+  Registry, GitHub Packages), pas de clone-and-build par service. **Stack de référence = GitLab (git) +
+  Jenkins (CI primaire) + Nexus/Artifactory.** CI publish/regenerate fournis : **Jenkins**
+  `platform/jenkins/Jenkinsfile.{publish,service}` (Config File Provider `maven-settings`, creds
+  `nexus-deploy`/`nexus-read`/`gitlab-bot`) ; GitLab `platform/gitlab/.gitlab-ci.{publish,service}.yml`
+  (`CI_JOB_TOKEN`) ; GitHub `.github/workflows/publish.yml` (`GITHUB_TOKEN`).
+- **Jenkins** : détecté via `JENKINS_URL`, branche `BRANCH_NAME`/`GIT_BRANCH`. `providerFromCi` renvoie
+  null pour Jenkins → le provider du slug vient du **host du remote git** (correct : Jenkins build GitLab
+  ET GitHub). Docs mettent Jenkins **en avant** (CI primaire) dans README + `platform/jenkins/README.md`.
 - **Publication GitHub Packages** : `distributionManagement` → `${github.packages.repo}` (défaut
   `Younesic/spring-backstage`) ; le repo `spring-backstage` est **public** → lisible par le `github.token`
   des repos consommateurs (sinon package privé = 404 cross-repo). Examples : `maven.deploy.skip=true`.

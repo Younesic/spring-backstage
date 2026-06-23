@@ -208,12 +208,16 @@ Detected from the environment, selecting the right variable set:
 
 | System | Signature | Repo slug | Branch | Image |
 |---|---|---|---|---|
+| **Jenkins** (primary) | `JENKINS_URL` set | — *(slug from git remote host)* | `BRANCH_NAME` / `GIT_BRANCH` | — |
+| GitLab CI | `GITLAB_CI=true` | `CI_PROJECT_PATH` | `CI_COMMIT_REF_NAME` | — |
 | GitHub Actions | `GITHUB_ACTIONS=true` | `GITHUB_REPOSITORY` | `GITHUB_REF_NAME` | — |
-| GitLab CI | `GITLAB_CI=true` | `CI_PROJECT_PATH` | `CI_COMMIT_REF_NAME` | `CI_REGISTRY_IMAGE` |
-| Jenkins | `JENKINS_URL` set | — | `BRANCH_NAME` / `GIT_BRANCH` | — |
 
 Outside CI everything falls back to git + convention. **No CODEOWNERS** is ever read — `owner` is
 always the declared `@BackstageComponent.owner`.
+
+On **Jenkins** the SCM provider for the slug key (`gitlab.com/...` vs `github.com/...`) comes from the
+**git remote host**, not the CI system — correct, since Jenkins builds repos from either. See
+[`platform/jenkins/`](./platform/jenkins/) for the reference Jenkins pipelines.
 
 ### Extending / overriding the registry
 
@@ -371,22 +375,27 @@ tooling registry + conventions in `<configuration>`. Because Maven allows only *
 don't ship our own parent — we insert into the corporate one. Per-project `<plugin>` blocks (as in the
 examples) remain valid for repos without a shared parent.
 
-## Adopt in your organization (GitHub, GitLab, internal registry)
+## Adopt in your organization (Jenkins-first; GitLab / GitHub also supported)
 
-The plugin is a normal Maven artifact — adopt it the way you adopt any internal library:
+The plugin is a normal Maven artifact — adopt it the way you adopt any internal library. The reference
+enterprise stack is **GitLab (git) + Jenkins (CI) + an internal Maven registry (Nexus / Artifactory)**:
 
-1. **Host it internally.** Fork/clone this repo into your SCM and publish the 3 library modules **once**
-   to your internal Maven registry — GitHub Packages, **GitLab Package Registry**, Nexus, or Artifactory.
-   Don't clone-and-build it per service. CI to publish: GitHub → [`.github/workflows/publish.yml`](./.github/workflows/publish.yml)
-   (built-in `GITHUB_TOKEN`); GitLab → [`platform/gitlab/.gitlab-ci.publish.yml`](./platform/gitlab/.gitlab-ci.publish.yml)
-   (built-in `CI_JOB_TOKEN`).
+1. **Host it internally.** Fork this repo into your GitLab and publish the 3 library modules **once** to
+   your internal registry — don't clone-and-build it per service. CI to publish:
+   - **Jenkins (primary)** → [`platform/jenkins/Jenkinsfile.publish`](./platform/jenkins/Jenkinsfile.publish)
+     (deploys to Nexus/Artifactory).
+   - GitLab CI → [`platform/gitlab/.gitlab-ci.publish.yml`](./platform/gitlab/.gitlab-ci.publish.yml) (built-in `CI_JOB_TOKEN`).
+   - GitHub Actions → [`.github/workflows/publish.yml`](./.github/workflows/publish.yml) (built-in `GITHUB_TOKEN`).
 2. **Point services at that registry** (`<repositories>` + `<pluginRepositories>`), then add the
    annotation + plugin — or inherit both from your corporate parent POM (above).
-3. **Regenerate in CI.** GitHub Actions or GitLab CI ([`platform/gitlab/.gitlab-ci.service.yml`](./platform/gitlab/.gitlab-ci.service.yml))
-   runs `process-classes` and commits the descriptor; your central discovery ingests it.
+3. **Regenerate in CI.** **Jenkins** ([`platform/jenkins/Jenkinsfile.service`](./platform/jenkins/Jenkinsfile.service)),
+   GitLab CI, or GitHub Actions runs `process-classes` and commits the descriptor; your central
+   discovery ingests it.
 
-The catalog derivation is **SCM-agnostic** (GitHub/GitLab/self-hosted) and **CI-agnostic** (GitHub
-Actions / GitLab CI / Jenkins). Full GitLab walk-through: [`platform/gitlab/README.md`](./platform/gitlab/README.md).
+The catalog derivation is **CI-agnostic** (Jenkins / GitLab CI / GitHub Actions) and **SCM-agnostic**
+(GitLab / GitHub / self-hosted). Reference walk-throughs:
+**[`platform/jenkins/README.md`](./platform/jenkins/README.md)** (primary) ·
+[`platform/gitlab/README.md`](./platform/gitlab/README.md).
 
 ## Golden path (Software Template)
 

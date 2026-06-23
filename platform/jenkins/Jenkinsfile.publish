@@ -1,0 +1,35 @@
+// Publish the generator (parent + annotations + core + maven-plugin) to your internal Maven registry
+// (Nexus / Artifactory) on the default branch. Put this in the generator fork as `Jenkinsfile`.
+//
+// Auth: a username/password credential ('nexus-deploy') bound to NEXUS_USER/NEXUS_PASS, plus the managed
+// settings.xml from this folder (Config File Provider, file id 'maven-settings', server id 'internal').
+// The deploy URL is passed via -DaltDeploymentRepository so you don't have to edit the pom; alternatively
+// set <distributionManagement> in your corporate parent. Example modules set maven.deploy.skip=true.
+pipeline {
+  agent {
+    docker { image 'maven:3.9-eclipse-temurin-17'; args '-v $HOME/.m2:/root/.m2' }
+  }
+  options { disableConcurrentBuilds() }
+  parameters {
+    string(name: 'MAVEN_DEPLOY_URL',
+           defaultValue: 'https://nexus.acme.internal/repository/maven-snapshots',
+           description: 'Internal Maven repository URL to deploy to (server id: internal)')
+  }
+  stages {
+    stage('Publish') {
+      when { branch 'main' }
+      steps {
+        configFileProvider([configFile(fileId: 'maven-settings', variable: 'MAVEN_SETTINGS')]) {
+          withCredentials([usernamePassword(credentialsId: 'nexus-deploy',
+                                            usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+            sh '''
+              mvn -B -ntp -DskipTests -s "$MAVEN_SETTINGS" \
+                -DaltDeploymentRepository=internal::${MAVEN_DEPLOY_URL} \
+                deploy
+            '''
+          }
+        }
+      }
+    }
+  }
+}
