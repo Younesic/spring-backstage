@@ -1,0 +1,56 @@
+# Backstage app-config snippet — GitLab group discovery for generated catalog files.
+#
+# Paste into your Backstage app-config.yaml. It auto-onboards every service that publishes a
+# catalog-info.generated.yaml in the scanned GitLab group(s) — no per-repo location to add by hand.
+#
+# Backend module required: @backstage/plugin-catalog-backend-module-gitlab
+#   backend.add(import('@backstage/plugin-catalog-backend-module-gitlab'))
+#
+# Mode 1 (default): the generator writes catalog-info.generated.yaml next to a human catalog-info.yaml
+#   -> set entityFilename: catalog-info.generated.yaml (below).
+# Mode 2: the service has NO human file -> set the plugin's <outputPath>catalog-info.yaml</outputPath>
+#   and use entityFilename: catalog-info.yaml here instead.
+
+integrations:
+  gitlab:
+    - host: gitlab.acme.io          # your GitLab host (gitlab.com or self-hosted)
+      token: ${GITLAB_TOKEN}        # read_api scope; reads project trees + raw files
+      # apiBaseUrl: https://gitlab.acme.io/api/v4   # set for self-hosted if auto-derive fails
+
+catalog:
+  providers:
+    gitlab:
+      # --- PoC: one broad scan (disposable) ---
+      poc:
+        host: gitlab.acme.io
+        group: younesic            # scans this group AND its subgroups
+        branch: main
+        entityFilename: catalog-info.generated.yaml
+        projectPattern: '.*'
+        schedule:
+          frequency: { minutes: 30 }
+          timeout: { minutes: 3 }
+
+      # --- Prod: one provider per TEAM group (each team owns its group) ---
+      # team-payments:
+      #   host: gitlab.acme.io
+      #   group: teams/payments
+      #   branch: main
+      #   entityFilename: catalog-info.generated.yaml
+      #   schedule:
+      #     frequency: { minutes: 30 }
+      #     timeout: { minutes: 3 }
+      # team-orders:
+      #   host: gitlab.acme.io
+      #   group: teams/orders
+      #   branch: main
+      #   entityFilename: catalog-info.generated.yaml
+      #   schedule:
+      #     frequency: { minutes: 30 }
+      #     timeout: { minutes: 3 }
+
+# Notes:
+# - A group scan INCLUDES its subgroups, so a parent group can cover all teams, or use one entry per group.
+# - Scope group/projectPattern: each scan reads every matched project's tree (blast radius / rate limits).
+# - $text: ./openapi.yaml resolves via the GitLab UrlReader (the integration token above), so the API
+#   entity's definition loads from the same repo.

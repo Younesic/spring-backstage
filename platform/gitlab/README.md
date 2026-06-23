@@ -28,6 +28,13 @@ root README "Zero-touch distribution"). Maven auth uses [`settings.xml`](./setti
 Then add [`.gitlab-ci.service.yml`](./.gitlab-ci.service.yml) to regenerate and commit the descriptor on
 the default branch.
 
+### Central ingestion (group discovery)
+
+So services onboard automatically (no per-repo location), point Backstage at the team GitLab group(s):
+paste [`backstage-discovery.gitlab.yaml`](./backstage-discovery.gitlab.yaml) into your Backstage
+`app-config.yaml`. A group scan includes subgroups; in prod use one provider entry per team group. The
+`younesic` scan is PoC-only.
+
 ## 3. Self-hosted GitLab / GitHub Enterprise
 
 Provider detection keys on the remote host (`*gitlab*` → gitlab, `*github*` → github), then the CI system
