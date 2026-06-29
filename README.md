@@ -292,8 +292,34 @@ public class OrdersApplication { ... }
 > (its own DB/queue/bucket provisioned with it). **Never** for shared infrastructure (a shared Kafka, a
 > team database, an org bucket) — two services declaring the same shared Resource produce
 > duplicate/conflicting catalog entities. For shared things, **reference** them via `dependsOn`.
-> There is deliberately **no inference** from the datasource/Spring config: ownership is declared
-> explicitly. No `@BackstageResource` → no Resource emitted (the default stays "reference only").
+
+### Inferred owned resources (`inferResources`) — opt-in
+
+For the common "DB-per-service" case, set `@BackstageComponent(inferResources = true)` and the build
+**auto-detects this service's own backing resources** and emits a `Resource` per type — no need to write
+each `@BackstageResource` by hand:
+
+```java
+@BackstageComponent(owner = "team-orders", lifecycle = Lifecycle.PRODUCTION, inferResources = true)
+// application.yaml: spring.datasource.url: jdbc:postgresql://${DB_HOST}/orders   + spring.kafka.*
+//   → Resource orders-postgresql (type postgresql) + Resource orders-kafka (type kafka), owner inherited,
+//     and the Component gains dependsOn to both.
+```
+
+Only the **type** is inferred, from two stable signals — **never** the connection value:
+- **Maven dependencies** (most reliable): postgres driver → `postgresql`, `spring-kafka` → `kafka`,
+  lettuce/jedis → `redis`, AWS S3 SDK → `s3`, etc.
+- **`application.yaml` keys + jdbc sub-protocol**: `jdbc:postgresql://${DB_HOST}` → `postgresql` (the
+  variabilized `${...}` is **not** read); `spring.kafka.*` → `kafka`, `spring.data.redis.*` → `redis`, …
+
+URL / port / topic / realm are **runtime connection config** (often `${...}`/secret) and are deliberately
+**not** put in the catalog — the catalog models *what depends on what and who owns it*, not connection
+strings. Resources are named `<component>-<type>` (service-scoped → unique, no cross-service clash) and
+owner/system are inherited. Explicit `@BackstageResource` wins on a name clash.
+
+> Use `inferResources` only when the service **owns** its resources (one instance per service). For
+> **shared** infrastructure, leave it off and **reference** via `dependsOn` — otherwise N services would
+> each create a box for the same shared instance.
 
 ### Consumed-API inference from `@FeignClient` (reserved)
 

@@ -2,6 +2,7 @@ package io.github.younesic.backstage.maven;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -19,7 +20,9 @@ import org.apache.maven.project.MavenProject;
 
 import io.github.younesic.backstage.core.build.CatalogBuilder;
 import io.github.younesic.backstage.core.build.GenerationRequest;
+import io.github.younesic.backstage.core.build.ResourceRequest;
 import io.github.younesic.backstage.core.derive.GitMetadata;
+import io.github.younesic.backstage.core.derive.ResourceInference;
 import io.github.younesic.backstage.core.derive.GitMetadata.RepoInfo;
 import io.github.younesic.backstage.core.derive.Names;
 import io.github.younesic.backstage.core.derive.OpenApiDetector;
@@ -106,7 +109,7 @@ final class CatalogGeneration {
                 .dependsOn(cleanRefs(declared.dependsOn))
                 .consumesApis(Arrays.asList(declared.consumesApis))
                 .providesApis(Arrays.asList(declared.providesApis))
-                .resources(declared.resources == null ? List.of() : declared.resources)
+                .resources(resources(declared, module, name))
                 .emitApi(willEmitApi)
                 .springdocPresent(springdoc)
                 .apiDefinitionRef(cfg.apiDefinitionRef)
@@ -170,6 +173,33 @@ final class CatalogGeneration {
             default:
                 return null;
         }
+    }
+
+    /**
+     * Explicit {@code @BackstageResource} declarations, plus — when {@code inferResources} is on — the
+     * service-owned resources inferred from deps + {@code application.yaml}, named
+     * {@code <component>-<type>}. Explicit declarations win on a name clash (the inferred one is skipped).
+     */
+    private static List<ResourceRequest> resources(AnnotatedComponent declared, MavenProject module,
+            String componentName) {
+        List<ResourceRequest> explicit = declared.resources == null ? List.of() : declared.resources;
+        if (!declared.inferResources) {
+            return explicit;
+        }
+        List<ResourceRequest> merged = new ArrayList<>(explicit);
+        Set<String> names = new LinkedHashSet<>();
+        for (ResourceRequest r : explicit) {
+            names.add(Names.normalizeName(r.name));
+        }
+        Path resourcesDir = module.getBasedir().toPath().resolve("src/main/resources");
+        for (String type : ResourceInference.infer(coordinates(module), resourcesDir)) {
+            String rname = Names.normalizeName(componentName + "-" + type);
+            if (names.add(rname)) {
+                merged.add(new ResourceRequest(rname, type, null, null,
+                        "Inferred " + type + " resource owned by " + componentName));
+            }
+        }
+        return merged;
     }
 
     private static String lastSegment(String groupId) {

@@ -36,3 +36,14 @@ generate-catalog:
       else
         echo "catalog-info.generated.yaml already up to date"
       fi
+    # Self-register the location in Backstage (group-agnostic discovery). Opt-in: set BACKSTAGE_URL +
+    # BACKSTAGE_TOKEN as CI variables. Idempotent (409 = already registered).
+    - |
+      if [ -n "$BACKSTAGE_URL" ]; then
+        TARGET="${CI_PROJECT_URL}/-/blob/${CI_DEFAULT_BRANCH}/catalog-info.generated.yaml"
+        code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BACKSTAGE_URL/api/catalog/locations" \
+          -H "Authorization: Bearer $BACKSTAGE_TOKEN" -H 'Content-Type: application/json' \
+          -d "{\"type\":\"url\",\"target\":\"$TARGET\"}")
+        echo "Backstage register ($TARGET): HTTP $code"
+        case "$code" in 201|409) ;; *) echo "WARNING: unexpected Backstage response $code" ;; esac
+      fi

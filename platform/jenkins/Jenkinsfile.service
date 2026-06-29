@@ -55,5 +55,24 @@ pipeline {
         }
       }
     }
+    stage('Register in Backstage') {
+      // Group-agnostic discovery: the pipeline tells Backstage where its descriptor is. Opt-in: set
+      // BACKSTAGE_URL + a 'backstage-token' credential. Idempotent (409 = already registered).
+      when { allOf { branch 'main'; expression { return env.BACKSTAGE_URL?.trim() } } }
+      steps {
+        withCredentials([string(credentialsId: 'backstage-token', variable: 'BACKSTAGE_TOKEN')]) {
+          sh '''
+            ORIGIN=$(git config --get remote.origin.url)
+            WEB=$(echo "$ORIGIN" | sed -E 's#^(git@|https?://)([^/:]+)[:/](.+?)(\\.git)?$#https://\\2/\\3#')
+            TARGET="${WEB}/-/blob/${BRANCH_NAME:-main}/catalog-info.generated.yaml"
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BACKSTAGE_URL/api/catalog/locations" \
+              -H "Authorization: Bearer $BACKSTAGE_TOKEN" -H 'Content-Type: application/json' \
+              -d "{\\"type\\":\\"url\\",\\"target\\":\\"$TARGET\\"}")
+            echo "Backstage register ($TARGET): HTTP $code"
+            case "$code" in 201|409) ;; *) echo "WARNING: unexpected Backstage response $code" ;; esac
+          '''
+        }
+      }
+    }
   }
 }

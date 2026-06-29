@@ -77,6 +77,22 @@ Build-time generator of Backstage `Component`/`API` entities from a Spring Boot 
 - **Jenkins** : détecté via `JENKINS_URL`, branche `BRANCH_NAME`/`GIT_BRANCH`. `providerFromCi` renvoie
   null pour Jenkins → le provider du slug vient du **host du remote git** (correct : Jenkins build GitLab
   ET GitHub). Docs mettent Jenkins **en avant** (CI primaire) dans README + `platform/jenkins/README.md`.
+- **Inférence de resources (opt-in `@BackstageComponent(inferResources=true)`)** : déduit les resources
+  **possédées** par le service (db/kafka/redis/s3/…) et émet un `kind: Resource` `<component>-<type>`
+  (owner/system hérités) + `dependsOn`. **TYPE seulement**, jamais la valeur de connexion : depuis le
+  **pom** (`ResourceInference.typeForCoordinate`) **et** `application.yaml` (sous-protocole `jdbc:<x>:` +
+  préfixes de clés `spring.kafka`/`spring.data.redis`/… — les `${...}` ne sont jamais lus). Nom
+  service-scopé ⇒ pas de collision ; `@BackstageResource` explicite **prime** sur l'inféré (skip par nom).
+  **Owned-only** : pour le **partagé**, laisser off et **référencer** via `dependsOn` (sinon N services
+  créeraient une box pour la même instance). url/port/topic/realm = config runtime, **hors catalogue**
+  (topic/realm = TODO étiquette d'info plus tard). Logique `CatalogGeneration.resources()`. Code
+  `core/derive/ResourceInference.java`.
+- **Discovery group-agnostic = self-registration (push)** : le job CI `POST $BACKSTAGE_URL/api/catalog/locations`
+  (opt-in `BACKSTAGE_URL`+`BACKSTAGE_TOKEN`, idempotent 409) → marche quel que soit le groupe GitLab, pas
+  de scan central à maintenir. Câblé dans `platform/{jenkins/Jenkinsfile.service, gitlab/.gitlab-ci.service.yml,
+  software-template/skeleton/.github/workflows}`. Alternative pull = provider discovery par groupe
+  (`platform/gitlab/backstage-discovery.gitlab.yaml`). **Doublons** : Backstage = conflit (pas de dernier-
+  gagne) ; règle = décommissionner l'humain, ou aligner le name pour remplacement propre.
 - **Publication GitHub Packages** : `distributionManagement` → `${github.packages.repo}` (défaut
   `Younesic/spring-backstage`) ; le repo `spring-backstage` est **public** → lisible par le `github.token`
   des repos consommateurs (sinon package privé = 404 cross-repo). Examples : `maven.deploy.skip=true`.

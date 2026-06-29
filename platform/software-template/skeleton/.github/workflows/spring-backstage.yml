@@ -35,3 +35,17 @@ jobs:
           else
             echo "catalog-info.generated.yaml already up to date"
           fi
+      - name: Register in Backstage
+        # Group-agnostic discovery: the pipeline tells Backstage where its descriptor is. Opt-in: set
+        # the BACKSTAGE_URL and BACKSTAGE_TOKEN secrets. Idempotent (409 = already registered).
+        if: ${{ env.BACKSTAGE_URL != '' }}
+        env:
+          BACKSTAGE_URL: ${{ secrets.BACKSTAGE_URL }}
+          BACKSTAGE_TOKEN: ${{ secrets.BACKSTAGE_TOKEN }}
+        run: |
+          TARGET="https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/catalog-info.generated.yaml"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BACKSTAGE_URL/api/catalog/locations" \
+            -H "Authorization: Bearer $BACKSTAGE_TOKEN" -H 'Content-Type: application/json' \
+            -d "{\"type\":\"url\",\"target\":\"$TARGET\"}")
+          echo "Backstage register ($TARGET): HTTP $code"
+          case "$code" in 201|409) ;; *) echo "WARNING: unexpected Backstage response $code" ;; esac

@@ -20,7 +20,9 @@ import io.github.younesic.backstage.annotations.Lifecycle;
         tags = {"java", "spring-boot"},
         // Tooling annotations (sonarqube/argocd/harbor/dependency-track) are derived from
         // env/convention. This pins one explicitly to show the override precedence.
-        annotations = {"argocd/app-name=orders-checkout"})
+        annotations = {"argocd/app-name=orders-checkout"},
+        // Infer this service's own resources from deps + application.yaml (postgresql + kafka here).
+        inferResources = true)
 public class OrdersServiceApplication {
 
     public static void main(String[] args) {

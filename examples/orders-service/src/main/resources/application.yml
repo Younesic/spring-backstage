@@ -1,6 +1,13 @@
 spring:
   application:
     name: orders-service
+  # Resource inference: VALUES are variabilized (${...}) — only the jdbc sub-protocol (postgresql) and
+  # the structural key (spring.kafka) are read, never host/port. With inferResources=true the plugin
+  # emits owned Resources orders-service-postgresql and orders-service-kafka.
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME:orders}
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
 
 server:
   # High port to avoid the ubiquitous 8080 clash (Docker/nginx often hold it).

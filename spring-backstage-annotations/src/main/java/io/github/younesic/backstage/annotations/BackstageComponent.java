@@ -102,4 +102,19 @@ public @interface BackstageComponent {
      * string. This never affects {@code owner}/{@code lifecycle}, which remain required governance fields.
      */
     String[] annotations() default {};
+
+    /**
+     * Opt-in. When {@code true}, the build infers this service's <strong>own</strong> backing resources
+     * (database, kafka, redis, …) from the Maven dependencies and {@code application.yaml}, and emits a
+     * {@code kind: Resource} per detected type, named {@code <component>-<type>} (e.g.
+     * {@code orders-postgresql}), owned by this Component.
+     *
+     * <p>Only the resource <em>type</em> is inferred — never connection values (URL, port, …), which are
+     * runtime config, often variabilized ({@code ${...}}) and secret, so they are not catalog data.
+     *
+     * <p>Use this only when the service <strong>owns</strong> its resources (one instance per service).
+     * For <em>shared</em> infrastructure, leave this {@code false} and reference it via {@link #dependsOn()}
+     * instead. Explicit {@code @BackstageResource} declarations always take precedence over inferred ones.
+     */
+    boolean inferResources() default false;
 }

@@ -21,4 +21,6 @@ final class AnnotatedComponent {
     String[] annotations;
     List<ResourceRequest> resources;
     boolean emitApi;
+    /** When true, infer service-owned resources (db/kafka/redis/…) from deps + application.yaml. */
+    boolean inferResources;
 }

@@ -71,6 +71,7 @@ final class ModuleScanner {
             ac.annotations = stringArrayParam(params, "annotations");
             ac.resources = readResources(ci);
             ac.emitApi = boolParam(params, "emitApi", true);
+            ac.inferResources = boolParam(params, "inferResources", false);
             return Optional.of(ac);
         }
     }

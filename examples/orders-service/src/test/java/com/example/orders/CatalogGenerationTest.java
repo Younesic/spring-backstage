@@ -41,7 +41,8 @@ class CatalogGenerationTest {
                 + " — build via the reactor so the plugin executes at process-classes");
 
         List<JsonNode> docs = documents(GENERATED);
-        assertEquals(2, docs.size(), "expected one Component and one API document");
+        assertEquals(4, docs.size(),
+                "expected Component + API + 2 inferred Resources (postgresql, kafka)");
 
         JsonNode component = docs.get(0);
         assertEquals("backstage.io/v1alpha1", component.path("apiVersion").asText());
@@ -93,6 +94,29 @@ class CatalogGenerationTest {
         JsonNode apiAnn = docs.get(1).path("metadata").path("annotations");
         assertTrue(apiAnn.path("argocd/app-name").isMissingNode(),
                 "API entity must not carry component tooling annotations");
+    }
+
+    @Test
+    void infersOwnedResourcesFromDepsAndConfig() throws Exception {
+        List<JsonNode> docs = documents(GENERATED);
+
+        // Component links to both inferred resources via dependsOn.
+        List<String> dependsOn = new ArrayList<>();
+        docs.get(0).path("spec").path("dependsOn").forEach(n -> dependsOn.add(n.asText()));
+        assertTrue(dependsOn.contains("resource:default/orders-service-postgresql"), "dependsOn: " + dependsOn);
+        assertTrue(dependsOn.contains("resource:default/orders-service-kafka"), "dependsOn: " + dependsOn);
+
+        // The two Resource entities are emitted with the detected type and inherited owner.
+        List<String> resourceTypes = new ArrayList<>();
+        for (JsonNode d : docs) {
+            if ("Resource".equals(d.path("kind").asText())) {
+                resourceTypes.add(d.path("metadata").path("name").asText() + ":" + d.path("spec").path("type").asText());
+                assertEquals("group:default/team-payments", d.path("spec").path("owner").asText(),
+                        "inferred resource inherits the component owner");
+            }
+        }
+        assertTrue(resourceTypes.contains("orders-service-postgresql:postgresql"), "resources: " + resourceTypes);
+        assertTrue(resourceTypes.contains("orders-service-kafka:kafka"), "resources: " + resourceTypes);
     }
 
     @Test

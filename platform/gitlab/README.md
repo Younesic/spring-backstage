@@ -28,12 +28,17 @@ root README "Zero-touch distribution"). Maven auth uses [`settings.xml`](./setti
 Then add [`.gitlab-ci.service.yml`](./.gitlab-ci.service.yml) to regenerate and commit the descriptor on
 the default branch.
 
-### Central ingestion (group discovery)
+### Central ingestion — two options
 
-So services onboard automatically (no per-repo location), point Backstage at the team GitLab group(s):
-paste [`backstage-discovery.gitlab.yaml`](./backstage-discovery.gitlab.yaml) into your Backstage
-`app-config.yaml`. A group scan includes subgroups; in prod use one provider entry per team group. The
-`younesic` scan is PoC-only.
+**Option A — self-registration (recommended when repos are spread across many groups).** The CI job
+tells Backstage where its descriptor is (`POST /api/catalog/locations`), so it works no matter which
+group the repo lives in — no central scan config to maintain. It's already wired (opt-in) in
+`.gitlab-ci.service.yml`: set the `BACKSTAGE_URL` and `BACKSTAGE_TOKEN` CI variables. Idempotent.
+
+**Option B — group discovery (pull).** Point Backstage at the team GitLab group(s): paste
+[`backstage-discovery.gitlab.yaml`](./backstage-discovery.gitlab.yaml) into your `app-config.yaml`. A
+group scan includes subgroups; in prod use one provider entry per team group. Good when teams are tidy
+under known groups; heavier if you scan broadly. The `younesic` scan is PoC-only.
 
 ## 3. Self-hosted GitLab / GitHub Enterprise
 
